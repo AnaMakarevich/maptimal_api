@@ -68,6 +68,24 @@ def get_osm_details_for_tile(tile_x, tile_y):
     }
 
 
+def assess_route_quality(tree_counts, industrial_counts, park_counts, air_quality_data):
+    """
+    :return: float - quality score
+    """
+    # TODO: use fancy ML model from scikit-learn
+    # park and industrial are big areas, use multiplier for them
+    park_industrial_score = (sum(park_counts) - sum(industrial_counts)) * 50
+
+    # this counts separate trees, so the number can be quite big
+    tree_score = sum(tree_counts)
+
+    # mean air quality index (1 - best, 5 - worst)
+    mean_air_q_index = sum(air_quality_data) / len(air_quality_data)
+    air_score = (3 - mean_air_q_index) * 10  # [20, 10, 0, -10, -20]
+
+    return park_industrial_score + tree_score + air_score
+
+
 def process_route(route: dict) -> dict:
     # TODO: check if already exists based on tile
     # TODO: extract existing segments
@@ -83,7 +101,12 @@ def process_route(route: dict) -> dict:
     tile_y_seq = [start_tile[1]]
     tile_set = []
     air_quality_data = [air_quality_index_at_start]  # from air pollution data
-    trees_count = []  # from openstreetmap
+
+    # from openstreetmap
+    tree_counts = []
+    industrial_counts = []
+    park_counts = []
+
     # TODO: exclude non-walking and non-bicycling
     for leg in route["legs"]:
         steps = leg["steps"]
@@ -104,10 +127,15 @@ def process_route(route: dict) -> dict:
                 # tile
                 air_quality_index_at_end = get_air_quality_index(lat, lon)
                 air_quality_data.append(air_quality_index_at_end)
+
+                tile_osm_details = get_osm_details_for_tile(end_tile_x, end_tile_y)
+                tree_counts.append(tile_osm_details['tree_count'])
+                industrial_counts.append(tile_osm_details['industrial_count'])
+                park_counts.append(tile_osm_details['park_count'])
                 # query landscape type for tiles if: only for start tile if the distance is small
     # TODO: post-processing step that merges tiles together so that small segments are ignored
     # TODO: after merging merge other arrays as well
-    # TODO: asses route quality
+    score = assess_route_quality(tree_counts, industrial_counts, park_counts, air_quality_data)
     # TODO: LATER: for each route:
     # goal -> find waypoints of interest and rebuild the route using these waypoints
     route_id = generate_route_id()
