@@ -1,3 +1,4 @@
+import uuid
 from math import asinh, pi, radians, tan, degrees, atan, sinh
 from typing import Tuple
 
@@ -5,7 +6,7 @@ from typing import Tuple
 # https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Lon..2Flat._to_tile_numbers_2
 
 
-def get_tile_from_coordinate(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[float, float]:
+def get_tile_from_coordinate(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
     """ Get tile coordinates from latitude and longitude
     :param lat_deg:
     :param lon_deg:
@@ -36,4 +37,5 @@ def generate_route_id() -> int:
     """Generates temporary root id
     :return:
     """
-    pass
+    route_id = uuid.uuid1()
+    return route_id

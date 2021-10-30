@@ -6,6 +6,7 @@ import requests
 from OSMPythonTools.overpass import Overpass, overpassQueryBuilder
 
 from route_inspector.api_keys import GOOGLE_MAPS_API_KEY, POLLUTION_API_KEY
+from route_inspector.route_tracking import set_route_to_pending_mode
 from route_inspector.tile_processor import get_tile_characteristics
 from route_inspector.utils import get_tile_from_coordinate, get_lat_lon_from_tile, generate_route_id
 
@@ -42,17 +43,17 @@ def get_air_quality_index(lon: float, lat: float) -> int:
 def get_osm_details_for_tile(tile_x, tile_y):
     bbox = list(get_bbox_of_tile(tile_x, tile_y))
     tree_count_query = overpassQueryBuilder(bbox=bbox, elementType='node',
-            selector='"natural"="tree"', out='count', includeGeometry=True)
+                                            selector='"natural"="tree"', out='count', includeGeometry=True)
     tree_count_result = overpass.query(tree_count_query)
     tree_count = tree_count_result.countNodes()
 
     industrial_count_query = overpassQueryBuilder(bbox=bbox, elementType=['node', 'way'],
-            selector='"landuse"="industrial"', out='count', includeGeometry=True)
+                                                  selector='"landuse"="industrial"', out='count', includeGeometry=True)
     industrial_count_result = overpass.query(industrial_count_query)
     industrial_count = industrial_count_result.countNodes() + industrial_count_result.countWays()
 
     parks_query = overpassQueryBuilder(bbox=bbox, elementType='way',
-            selector='"leisure"="park"', out='body', includeGeometry=True)
+                                       selector='"leisure"="park"', out='body', includeGeometry=True)
     parks_result = overpass.query(parks_query)
     parks = []
     for park in parks_result.toJSON()['elements']:
@@ -80,6 +81,7 @@ def process_route(route: dict) -> dict:
     air_quality_index_at_start = get_air_quality_index(lat, lon)
     tile_x_seq = [start_tile[0]]
     tile_y_seq = [start_tile[1]]
+    tile_set = []
     air_quality_data = [air_quality_index_at_start]  # from air pollution data
     trees_count = []  # from openstreetmap
     # TODO: exclude non-walking and non-bicycling
@@ -89,7 +91,7 @@ def process_route(route: dict) -> dict:
             end_location = step["end_location"]
             lat, lon = end_location["lat"], end_location["lng"]
             # get tile coordinates (mine-craftize)
-            #start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
+            # start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
             end_tile_x, end_tile_y = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
             # get known params about this tile based on previous evaluations
             tile_characteristics = get_tile_characteristics(end_tile_x, end_tile_y)
@@ -98,6 +100,7 @@ def process_route(route: dict) -> dict:
             if not ((end_tile_x == tile_x_seq[-1]) and (end_tile_y == tile_y_seq[-1])):
                 tile_x_seq.append(end_tile_x)
                 tile_y_seq.append(end_tile_y)
+                tile_set.append(f"{end_tile_x}-{end_tile_y}")
                 # tile
                 air_quality_index_at_end = get_air_quality_index(lat, lon)
                 air_quality_data.append(air_quality_index_at_end)
@@ -107,6 +110,9 @@ def process_route(route: dict) -> dict:
     # TODO: asses route quality
     # TODO: LATER: for each route:
     # goal -> find waypoints of interest and rebuild the route using these waypoints
+    route_id = generate_route_id()
+    set_route_to_pending_mode(route_id, tile_set)
+
     return {'green': 1, 'crowded': 1}
 
 
@@ -142,7 +148,7 @@ def compute_route(input_params: dict):
         # get bounding box since we can search in this area
         bounding_box = route['bounds']
         # TODO: get nearby cool places from the center
-        route_quality = process_route(route)
+        route_quality, route_id = process_route(route)
     # TODO: choose best route
     #  TODO: TRY TO BUILD BETTER BY USING VIA_WAYPOINT
     # get base route from google maps
@@ -156,5 +162,4 @@ def compute_route(input_params: dict):
     # TODO: replace with actual route suggestion
     route = default_route
     route_evaluation_result = None
-    route_id = generate_route_id()
     return route, route_evaluation_result, route_id
