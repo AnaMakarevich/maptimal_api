@@ -35,6 +35,8 @@ def get_air_quality_index(lon: float, lat: float) -> int:
 
 
 def process_route(route: dict) -> dict:
+    # TODO: check if already exists
+    # TODO: extract existing segments
     # extract segments
     start_location = route["legs"][0]["steps"][0]["start_location"]
     start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
@@ -43,14 +45,15 @@ def process_route(route: dict) -> dict:
     tile_y_seq = [start_tile[1]]
     air_quality_data = [air_quality_index_at_start]  # from air pollution data
     terrain_type = []  # from openstreetmap
+    # TODO: exclude non-walking and non-bicycling
     for leg in route["legs"]:
         steps = leg["steps"]
         for step in steps:
             start_location = step["start_location"]
             end_location = step["end_location"]
 
-            # get tile coordinates
-            start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
+            # get tile coordinates (mine-craftize)
+            #start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
             end_tile = get_tile_from_coordinate(*end_location, ZOOM_LEVEL_TILES)
 
             # store tile coordinates of the end point
@@ -62,11 +65,10 @@ def process_route(route: dict) -> dict:
             air_quality_data.append(air_quality_index_at_end)
             # query landscape type for tiles if: only for start tile if the distance is small
     # TODO: post-processing step that merges tiles together so that small segments are ignored
-    # TODO: after merging save route in cache with values for air quality, terrain
+    # TODO: after merging merge other arrays as well
     # TODO: asses route quality
     # TODO: LATER: for each route:
     # goal -> find waypoints of interest and rebuild the route using these waypoints
-    # TODO: cash segments to redis
     return {'green': 1, 'crowded': 1}
 
 
@@ -86,8 +88,10 @@ def compute_route(input_params: dict):
     for route in routes:
         # get bounding box since we can search in this area
         bounding_box = route['bounds']
+        # TODO: get nearby cool places from the center
         route_quality = process_route(route)
     # TODO: choose best route
+    #  TODO: TRY TO BUILD BETTER BY USING VIA_WAYPOINT
     # get base route from google maps
 
     green = input_params['green']
