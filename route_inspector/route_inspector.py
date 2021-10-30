@@ -4,13 +4,14 @@ from datetime import datetime
 import requests
 
 from route_inspector.api_keys import GOOGLE_MAPS_API_KEY, POLLUTION_API_KEY
-from route_inspector.utils import get_tile_from_coordinate
+from route_inspector.tile_processor import get_tile_characteristics
+from route_inspector.utils import get_tile_from_coordinate, generate_route_id
 
 ZOOM_LEVEL_TILES = 17
 
 
 # default google maps directions signature for reference
-def directions(client, origin, destination, mode=None,
+def directions(origin, destination, mode=None,
                waypoints=None, alternatives=False, avoid=None,
                language=None, units=None, region=None,
                departure_time=None, arrival_time=None,
@@ -37,9 +38,11 @@ def get_air_quality_index(lon: float, lat: float) -> int:
 def process_route(route: dict) -> dict:
     # TODO: check if already exists based on tile
     # TODO: extract existing segments
+    # TODO: store route
     # extract segments
     start_location = route["legs"][0]["steps"][0]["start_location"]
-    print(start_location)
+    end_location = route["legs"][-1]["steps"][-1]["end_location"]
+
     lat, lon = start_location["lat"], start_location["lng"]
     start_tile = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
     air_quality_index_at_start = get_air_quality_index(lat, lon)
@@ -56,7 +59,8 @@ def process_route(route: dict) -> dict:
             # get tile coordinates (mine-craftize)
             #start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
             end_tile_x, end_tile_y = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
-
+            # get known params about this tile based on previous evaluations
+            tile_characteristics = get_tile_characteristics(end_tile_x, end_tile_y)
             # store tile coordinates of the end point if the tile changes
             # TODO: add condition of terrain change
             if not ((end_tile_x == tile_x_seq[-1]) and (end_tile_y == tile_y_seq[-1])):
@@ -87,6 +91,7 @@ def compute_route(input_params: dict):
     :return:
     """
     routes = get_google_maps_routes(input_params["gmap_params"])
+    default_route = routes[0]
     for route in routes:
         # get bounding box since we can search in this area
         bounding_box = route['bounds']
@@ -102,5 +107,8 @@ def compute_route(input_params: dict):
     safer = input_params['safer']
     # TODO: for greener: only evaluate bicycle and walking segments surroundings
     # safer: avoid industrial zones by default
-    # TODO: grab segments matrix and get data from there
-    return {'route': 'route_stub'}
+    # TODO: replace with actual route suggestion
+    route = default_route
+    route_evaluation_result = None
+    route_id = generate_route_id()
+    return route, route_evaluation_result, route_id

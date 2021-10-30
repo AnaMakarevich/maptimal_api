@@ -20,8 +20,8 @@ def get_route():
     Optimised route along with the route id which is necessary to send evaluation after the route is completed.
     """
     input_params = request.get_json(force=True)
-    route, route_id = compute_route(input_params)
-    result_dict = {'text': None, 'route_id': route_id}
+    route, route_evaluation_result, route_id = compute_route(input_params)
+    result_dict = {'route': route, 'route_id': route_id, 'route_evaluation': route_evaluation_result}
     return jsonify(result_dict)
 
 
