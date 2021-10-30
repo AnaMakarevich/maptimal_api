@@ -3,11 +3,15 @@ from datetime import datetime
 
 import requests
 
+from OSMPythonTools.overpass import Overpass, overpassQueryBuilder
+
 from route_inspector.api_keys import GOOGLE_MAPS_API_KEY, POLLUTION_API_KEY
 from route_inspector.tile_processor import get_tile_characteristics
 from route_inspector.utils import get_tile_from_coordinate, get_lat_lon_from_tile, generate_route_id
 
 ZOOM_LEVEL_TILES = 17
+
+overpass = Overpass()
 
 
 # default google maps directions signature for reference
@@ -35,6 +39,34 @@ def get_air_quality_index(lon: float, lat: float) -> int:
         raise Exception("Air pollution API failed")
 
 
+def get_osm_details_for_tile(tile_x, tile_y):
+    bbox = list(get_bbox_of_tile(tile_x, tile_y))
+    tree_count_query = overpassQueryBuilder(bbox=bbox, elementType='node',
+            selector='"natural"="tree"', out='count', includeGeometry=True)
+    tree_count_result = overpass.query(tree_count_query)
+    tree_count = tree_count_result.countNodes()
+
+    industrial_count_query = overpassQueryBuilder(bbox=bbox, elementType=['node', 'way'],
+            selector='"landuse"="industrial"', out='count', includeGeometry=True)
+    industrial_count_result = overpass.query(industrial_count_query)
+    industrial_count = industrial_count_result.countNodes() + industrial_count_result.countWays()
+
+    parks_query = overpassQueryBuilder(bbox=bbox, elementType='way',
+            selector='"leisure"="park"', out='body', includeGeometry=True)
+    parks_result = overpass.query(parks_query)
+    parks = []
+    for park in parks_result.toJSON()['elements']:
+        park_bounds = park['bounds']
+        park_bbox = [park_bounds[key] for key in ['minlat', 'minlon', 'maxlat', 'maxlon']]
+        parks.append({'bbox': park_bbox})
+
+    return {
+        'tree_count': tree_count,
+        'industrial_count': industrial_count,
+        'park_count': len(parks),
+    }
+
+
 def process_route(route: dict) -> dict:
     # TODO: check if already exists based on tile
     # TODO: extract existing segments
@@ -49,7 +81,7 @@ def process_route(route: dict) -> dict:
     tile_x_seq = [start_tile[0]]
     tile_y_seq = [start_tile[1]]
     air_quality_data = [air_quality_index_at_start]  # from air pollution data
-    terrain_type = []  # from openstreetmap
+    trees_count = []  # from openstreetmap
     # TODO: exclude non-walking and non-bicycling
     for leg in route["legs"]:
         steps = leg["steps"]
@@ -83,8 +115,13 @@ def get_bbox_of_tile(xtile, ytile, zoom=ZOOM_LEVEL_TILES):
 
     :return: tuple(xmin, ymin, xmax, ymax)
     """
-    return get_lat_lon_from_tile(xtile, ytile, zoom) + \
-        get_lat_lon_from_tile(xtile + 1, ytile + 1, zoom)
+    lat1, lon1 = get_lat_lon_from_tile(xtile, ytile, zoom)
+    lat2, lon2 = get_lat_lon_from_tile(xtile + 1, ytile + 1, zoom)
+    max_lat = max(lat1, lat2)
+    min_lat = min(lat1, lat2)
+    max_lon = max(lon1, lon2)
+    min_lon = min(lon1, lon2)
+    return min_lat, min_lon, max_lat, max_lon
 
 
 def get_google_maps_routes(google_maps_params: dict):
