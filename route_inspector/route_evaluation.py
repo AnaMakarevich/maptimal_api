@@ -36,7 +36,7 @@ def update_tile_params(tile_id: str, user_feedback: dict) -> None:
         return
 
     try:
-        with open('mock_db/tiles_eval_data.txt') as json_file:
+        with open('mock_db/tiles_eval_data_17.txt') as json_file:
             data = json.load(json_file)
         if tile_id not in data:
             data[tile_id] = {'counter': 0, 'safe': 0, 'crowded': 0, 'green': 0, 'calm': 0}
@@ -48,7 +48,7 @@ def update_tile_params(tile_id: str, user_feedback: dict) -> None:
         tile['green'] += green
         tile['calm'] += calm
         # save update
-        with open('mock_db/tiles_eval_data.txt', 'w') as json_file:
+        with open('mock_db/tiles_eval_data_17.txt', 'w') as json_file:
             json.dump(data, json_file)
     except FileNotFoundError:
         # TODO: log error in logging system
