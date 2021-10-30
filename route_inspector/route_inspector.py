@@ -35,7 +35,7 @@ def get_air_quality_index(lon: float, lat: float) -> int:
 
 
 def process_route(route: dict) -> dict:
-    # TODO: check if already exists
+    # TODO: check if already exists based on tile
     # TODO: extract existing segments
     # extract segments
     start_location = route["legs"][0]["steps"][0]["start_location"]
@@ -55,16 +55,17 @@ def process_route(route: dict) -> dict:
             lat, lon = end_location["lat"], end_location["lng"]
             # get tile coordinates (mine-craftize)
             #start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
-            end_tile = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
+            end_tile_x, end_tile_y = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
 
-            # store tile coordinates of the end point
-            tile_x_seq.append(end_tile[0])
-            tile_y_seq.append(end_tile[1])
-
-            # tile
-            air_quality_index_at_end = get_air_quality_index(lat, lon)
-            air_quality_data.append(air_quality_index_at_end)
-            # query landscape type for tiles if: only for start tile if the distance is small
+            # store tile coordinates of the end point if the tile changes
+            # TODO: add condition of terrain change
+            if not ((end_tile_x == tile_x_seq[-1]) and (end_tile_y == tile_y_seq[-1])):
+                tile_x_seq.append(end_tile_x)
+                tile_y_seq.append(end_tile_y)
+                # tile
+                air_quality_index_at_end = get_air_quality_index(lat, lon)
+                air_quality_data.append(air_quality_index_at_end)
+                # query landscape type for tiles if: only for start tile if the distance is small
     # TODO: post-processing step that merges tiles together so that small segments are ignored
     # TODO: after merging merge other arrays as well
     # TODO: asses route quality
