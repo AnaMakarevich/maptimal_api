@@ -1,4 +1,4 @@
-def track_route():
+def track_route(route_id: int):
     """Add route to routes currently in progress and increment counter for the segments
     :return:
     """
