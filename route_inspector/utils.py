@@ -1,6 +1,9 @@
 from math import asinh, pi, radians, tan, degrees, atan, sinh
 from typing import Tuple
 
+# Based on OpenStreetMap wiki
+# https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Lon..2Flat._to_tile_numbers_2
+
 
 def get_tile_from_coordinate(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[float, float]:
     """ Get tile coordinates from latitude and longitude
@@ -17,6 +20,11 @@ def get_tile_from_coordinate(lat_deg: float, lon_deg: float, zoom: int) -> Tuple
 
 
 def get_lat_lon_from_tile(x_tile: int, y_tile: int, zoom: int) -> Tuple[float, float]:
+    """ Get NW corner of the tile.
+
+    Call with xtile + 1 and ytile + 1 to get the SE corner.
+    Call with xtile + 0.5 and ytile + 0.5 to get the center point.
+    """
     n = 2.0 ** zoom
     lon_deg = x_tile / n * 360.0 - 180.0
     lat_rad = atan(sinh(pi * (1 - 2 * y_tile / n)))

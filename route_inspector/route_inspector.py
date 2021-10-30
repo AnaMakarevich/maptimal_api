@@ -5,7 +5,7 @@ import requests
 
 from route_inspector.api_keys import GOOGLE_MAPS_API_KEY, POLLUTION_API_KEY
 from route_inspector.tile_processor import get_tile_characteristics
-from route_inspector.utils import get_tile_from_coordinate, generate_route_id
+from route_inspector.utils import get_tile_from_coordinate, get_lat_lon_from_tile, generate_route_id
 
 ZOOM_LEVEL_TILES = 17
 
@@ -76,6 +76,15 @@ def process_route(route: dict) -> dict:
     # TODO: LATER: for each route:
     # goal -> find waypoints of interest and rebuild the route using these waypoints
     return {'green': 1, 'crowded': 1}
+
+
+def get_bbox_of_tile(xtile, ytile, zoom=ZOOM_LEVEL_TILES):
+    """ Get the bounding box of a tile
+
+    :return: tuple(xmin, ymin, xmax, ymax)
+    """
+    return get_lat_lon_from_tile(xtile, ytile, zoom) + \
+        get_lat_lon_from_tile(xtile + 1, ytile + 1, zoom)
 
 
 def get_google_maps_routes(google_maps_params: dict):
