@@ -28,7 +28,7 @@ def get_air_quality_index(lon: float, lat: float) -> int:
     request_link = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={POLLUTION_API_KEY}"
     response = requests.get(request_link)
     if response.status_code == 200:
-        air_quality_index = response.json()['list']['main']['aqi']
+        air_quality_index = response.json()['list'][0]['main']['aqi']
         return air_quality_index
     else:
         raise Exception("Air pollution API failed")
@@ -39,8 +39,10 @@ def process_route(route: dict) -> dict:
     # TODO: extract existing segments
     # extract segments
     start_location = route["legs"][0]["steps"][0]["start_location"]
-    start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
-    air_quality_index_at_start = get_air_quality_index(*start_location)
+    print(start_location)
+    lat, lon = start_location["lat"], start_location["lng"]
+    start_tile = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
+    air_quality_index_at_start = get_air_quality_index(lat, lon)
     tile_x_seq = [start_tile[0]]
     tile_y_seq = [start_tile[1]]
     air_quality_data = [air_quality_index_at_start]  # from air pollution data
@@ -49,19 +51,18 @@ def process_route(route: dict) -> dict:
     for leg in route["legs"]:
         steps = leg["steps"]
         for step in steps:
-            start_location = step["start_location"]
             end_location = step["end_location"]
-
+            lat, lon = end_location["lat"], end_location["lng"]
             # get tile coordinates (mine-craftize)
             #start_tile = get_tile_from_coordinate(*start_location, ZOOM_LEVEL_TILES)
-            end_tile = get_tile_from_coordinate(*end_location, ZOOM_LEVEL_TILES)
+            end_tile = get_tile_from_coordinate(lat, lon, ZOOM_LEVEL_TILES)
 
             # store tile coordinates of the end point
             tile_x_seq.append(end_tile[0])
             tile_y_seq.append(end_tile[1])
 
             # tile
-            air_quality_index_at_end = get_air_quality_index(*end_location)
+            air_quality_index_at_end = get_air_quality_index(lat, lon)
             air_quality_data.append(air_quality_index_at_end)
             # query landscape type for tiles if: only for start tile if the distance is small
     # TODO: post-processing step that merges tiles together so that small segments are ignored
