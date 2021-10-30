@@ -31,3 +31,4 @@ def get_tile_characteristics(tile_x: int, tile_y: int, zoom: int = 17) -> Union[
                 return None
     except FileNotFoundError:
         print("System was not initialized")
+        return None
