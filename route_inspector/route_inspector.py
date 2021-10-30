@@ -54,16 +54,20 @@ def get_osm_details_for_tile(tile_x, tile_y):
     parks_query = overpassQueryBuilder(bbox=bbox, elementType='way',
             selector='"leisure"="park"', out='body', includeGeometry=True)
     parks_result = overpass.query(parks_query)
-    parks = []
+    parks = {}
     for park in parks_result.toJSON()['elements']:
         park_bounds = park['bounds']
         park_bbox = [park_bounds[key] for key in ['minlat', 'minlon', 'maxlat', 'maxlon']]
-        parks.append({'bbox': park_bbox})
+        parks[park['id']] = {
+            'id': park['id'],
+            'bbox': park_bbox,
+        }
 
     return {
         'tree_count': tree_count,
         'industrial_count': industrial_count,
         'park_count': len(parks),
+        'parks': parks,
     }
 
 
@@ -104,6 +108,7 @@ def process_route(route: dict) -> dict:
     tree_counts = []
     industrial_counts = []
     park_counts = []
+    parks = {}
 
     # TODO: exclude non-walking and non-bicycling
     for leg in route["legs"]:
@@ -129,13 +134,47 @@ def process_route(route: dict) -> dict:
                 tree_counts.append(tile_osm_details['tree_count'])
                 industrial_counts.append(tile_osm_details['industrial_count'])
                 park_counts.append(tile_osm_details['park_count'])
+                parks.update(tile_osm_details['parks'])
                 # query landscape type for tiles if: only for start tile if the distance is small
     # TODO: post-processing step that merges tiles together so that small segments are ignored
     # TODO: after merging merge other arrays as well
     score = assess_route_quality(tree_counts, industrial_counts, park_counts, air_quality_data)
     # TODO: LATER: for each route:
     # goal -> find waypoints of interest and rebuild the route using these waypoints
-    return {'green': 1, 'crowded': 1}
+    return score
+
+
+def alternative_routes(route: dict, search_params: dict) -> list:
+    """
+    :param route: google maps route dict with additional keys: score, parks
+    :return: list of alternative routes
+    """
+    parks = route['parks']
+    for park_id, park in parks.items():
+        park_center = get_center_from_bbox(park['bbox'])
+
+        # propose park_center as a waypoint
+        # search_params = {**search_params}  # copy
+        # search_params['waypoints'] = [park_center]
+
+        # propose this waypoint
+        good_waypoint = (48.190723625772925,11.6059563098256)
+        search_params['waypoints'].append(good_waypoint)
+
+        search_params['waypoints'] = '|'.join(
+            [str(waypoint[0]) + ',' + str(waypoint[1]) for waypoint in search_params['waypoints']]
+        )
+
+
+def get_center_from_bbox(bbox) -> tuple:
+    """
+    :param bbox: iterable of 4 floats
+    :return: tuple of floats
+    """
+    return (
+        (bbox[0] + bbox[2]) / 2,
+        (bbox[1] + bbox[3]) / 2,
+    )
 
 
 def get_bbox_of_tile(xtile, ytile, zoom=ZOOM_LEVEL_TILES):
@@ -164,13 +203,17 @@ def compute_route(input_params: dict):
     :param input_params:
     :return:
     """
-    routes = get_google_maps_routes(input_params["gmap_params"])
+    search_params = input_params["gmap_params"]
+    routes = get_google_maps_routes(search_params)
     default_route = routes[0]
     for route in routes:
         # get bounding box since we can search in this area
         bounding_box = route['bounds']
         # TODO: get nearby cool places from the center
         route_quality = process_route(route)
+        route['score'] = route_quality
+        alternatives = alternative_routes(route, search_params)
+
     # TODO: choose best route
     #  TODO: TRY TO BUILD BETTER BY USING VIA_WAYPOINT
     # get base route from google maps
