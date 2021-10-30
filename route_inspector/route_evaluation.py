@@ -10,7 +10,8 @@ def get_tiles_set_by_temp_route_id(route_id: str) -> list:
     try:
         with open('mock_db/route_tracker.txt') as json_file:
             data = json.load(json_file)
-            tiles_set = data[route_id]
+            tiles_set = data[route_id]["tiles"]
+            # TODO: ideally remove the route already from tracker
             return tiles_set
     except KeyError:
         # TODO: log error in logging system
