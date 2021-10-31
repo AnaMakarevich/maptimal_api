@@ -9,7 +9,7 @@ def set_route_to_pending_mode(route_id, tiles_set, route_time=60*60):
     with open('mock_db/pending_routes.txt') as json_file:
         data = json.load(json_file)
     with open('mock_db/pending_routes.txt', 'w') as json_file:
-        data[route_id]["tiles"] = tiles_set
+        data.setdefault(route_id, {})["tiles"] = tiles_set
         data[route_id]["added"] = round(time.time())
         # add route time to give a better estimate of when the route should be disabled if it's activated
         data[route_id]["route_time"] = route_time

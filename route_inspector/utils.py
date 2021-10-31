@@ -37,5 +37,5 @@ def generate_route_id() -> int:
     """Generates temporary root id
     :return:
     """
-    route_id = uuid.uuid1()
+    route_id = str(uuid.uuid1())
     return route_id
