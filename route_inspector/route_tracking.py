@@ -33,10 +33,10 @@ def track_route(route_id: str):
     # add tracker
     with open('mock_db/route_tracker.txt') as json_file:
         route_trackers = json.load(json_file)
-        route_trackers[route_id]["route_ttl"] = route_ttl
+        route_trackers.setdefault(route_id, {})["route_ttl"] = route_ttl
         route_trackers[route_id]["started"] = start_time
         route_trackers[route_id]["tiles"] = tiles
-    with open('mock_db/route_tracker.txt', 'r') as json_file:
+    with open('mock_db/route_tracker.txt', 'w') as json_file:
         json.dump(route_trackers, json_file)
         # TODO: ideally schedule removing already
     # increment tiles
@@ -48,7 +48,7 @@ def track_route(route_id: str):
                 active_tiles[tile] += 1
             else:
                 active_tiles[tile] = 0
-    with open('mock_db/active_tiles.txt') as json_file:
+    with open('mock_db/active_tiles.txt', 'w') as json_file:
         json.dump(active_tiles, json_file)
 
 
@@ -69,7 +69,7 @@ def stop_tracking(route_id: str):
                 active_tiles[tile] -= 1
             else:
                 active_tiles[tile] = 0
-    with open('mock_db/active_tiles.txt') as json_file:
+    with open('mock_db/active_tiles.txt', 'w') as json_file:
         json.dump(active_tiles, json_file)
     # remove tracker from trackers (also to make sure we don't decrement twice
     route_trackers.pop(route_id, None)
