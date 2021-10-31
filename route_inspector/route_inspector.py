@@ -139,6 +139,7 @@ def process_route(route: dict) -> dict:
     # TODO: LATER: for each route:
     # goal -> find waypoints of interest and rebuild the route using these waypoints
     route_id = generate_route_id()
+    route['route_id'] = route_id
     set_route_to_pending_mode(route_id, tile_set)
 
     return {'green': 1, 'crowded': 1}
@@ -190,4 +191,4 @@ def compute_route(input_params: dict):
     # TODO: replace with actual route suggestion
     route = default_route
     route_evaluation_result = None
-    return route, route_evaluation_result, route_id
+    return route, route_evaluation_result, route.get('route_id', 'crowded')
